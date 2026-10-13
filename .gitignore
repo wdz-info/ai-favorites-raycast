@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.rayext
+.DS_Store
+.test-build/
+native-qa/
+.env
+.env.*
+*.log

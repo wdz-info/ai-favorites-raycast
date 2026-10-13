@@ -1,0 +1,208 @@
+{
+  "name": "ai-favorites",
+  "title": "AI 收藏夹",
+  "description": "收藏、检索和复用 Codex、Kiro、Grok 编程会话中的内容，支持本地历史自动同步。",
+  "icon": "extension-icon.png",
+  "author": "wudaizhuang",
+  "categories": [
+    "Developer Tools",
+    "Productivity"
+  ],
+  "platforms": [
+    "macOS"
+  ],
+  "license": "MIT",
+  "version": "0.3.0",
+  "commands": [
+    {
+      "name": "favorites",
+      "title": "AI 收藏夹",
+      "description": "统一管理与全文搜索会话、回复和文件版本",
+      "mode": "view",
+      "keywords": [
+        "收藏",
+        "kiro",
+        "codex",
+        "AI Favorites",
+        "bookmarks",
+        "grok"
+      ]
+    },
+    {
+      "name": "browse-codex-sessions",
+      "title": "浏览 AI 会话",
+      "description": "浏览 Codex、Kiro 和 Grok 历史会话，收藏回复与文件",
+      "mode": "view",
+      "keywords": [
+        "grok",
+        "AI Favorites",
+        "kiro",
+        "收藏"
+      ]
+    },
+    {
+      "name": "add-ai-favorite",
+      "title": "添加 AI 收藏",
+      "description": "添加会话、AI 回复或文件版本，设置标签与备注",
+      "mode": "view",
+      "keywords": [
+        "grok",
+        "AI Favorites",
+        "kiro",
+        "收藏"
+      ]
+    },
+    {
+      "name": "search-favorites",
+      "title": "搜索收藏",
+      "description": "跨项目全文搜索收藏的正文、上下文、标签和备注",
+      "mode": "view",
+      "keywords": [
+        "grok",
+        "AI Favorites",
+        "kiro",
+        "收藏"
+      ]
+    },
+    {
+      "name": "sync-sessions",
+      "title": "同步 AI 历史",
+      "description": "立即扫描历史会话；后台每分钟自动同步本地历史目录",
+      "mode": "no-view",
+      "interval": "1m"
+    },
+    {
+      "name": "context-pack",
+      "title": "上下文打包",
+      "description": "多选收藏，预览并复制可供其他 AI 使用的上下文",
+      "mode": "view"
+    },
+    {
+      "name": "capture-selection",
+      "title": "选中文字快捷收藏",
+      "description": "读取选中文字，失败时使用剪贴板，补充标题和来源",
+      "mode": "view"
+    },
+    {
+      "name": "export-obsidian",
+      "title": "导出到 Obsidian",
+      "description": "批量导出收藏为保留标签、备注、上下文和来源的笔记",
+      "mode": "view"
+    },
+    {
+      "name": "search-by-code",
+      "title": "用报错或代码找收藏",
+      "description": "匹配异常名、类名及关键词，查找相关历史方案",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "codexHome",
+      "title": "Codex 历史目录",
+      "description": "留空使用 CODEX_HOME 或 ~/.codex。",
+      "type": "textfield",
+      "required": false,
+      "placeholder": "~/.codex"
+    },
+    {
+      "name": "storageDirectory",
+      "title": "收藏资料库目录",
+      "description": "留空使用 ~/Library/Application Support/AI Favorites，快照独立于 Agent 历史保存。",
+      "type": "textfield",
+      "required": false
+    },
+    {
+      "name": "openCodexLinks",
+      "title": "Codex 会话跳转",
+      "description": "打开原始会话；指定消息使用源记录定位。",
+      "type": "checkbox",
+      "label": "启用 Codex 会话链接",
+      "default": true,
+      "required": false
+    },
+    {
+      "name": "kiroHome",
+      "title": "Kiro 历史目录",
+      "description": "留空使用 KIRO_HOME 或 ~/.kiro；支持 CLI 与 IDE 新版会话。",
+      "type": "textfield",
+      "required": false,
+      "placeholder": "~/.kiro"
+    },
+    {
+      "name": "kiroDatabase",
+      "title": "Kiro CLI 旧版数据库",
+      "description": "留空读取 macOS kiro-cli 的 data.sqlite3；只读，不访问认证表。",
+      "type": "textfield",
+      "required": false
+    },
+    {
+      "name": "kiroLegacyIde",
+      "title": "Kiro IDE 旧版历史目录",
+      "description": "留空读取 Kiro 的 kiro.kiroagent 全局存储目录。",
+      "type": "textfield",
+      "required": false
+    },
+    {
+      "name": "grokHome",
+      "title": "Grok 历史目录",
+      "description": "留空使用 GROK_HOME 或 ~/.grok；支持官方 Grok CLI 消息流。",
+      "type": "textfield",
+      "required": false,
+      "placeholder": "~/.grok"
+    },
+    {
+      "name": "autoSync",
+      "title": "自动同步",
+      "description": "后台每分钟扫描一次，浏览界面打开时每 15 秒刷新；保留已收藏的历史快照。",
+      "type": "checkbox",
+      "label": "自动发现新会话及内容变化",
+      "default": true,
+      "required": false
+    },
+    {
+      "name": "obsidianVault",
+      "title": "Obsidian 仓库路径",
+      "description": "留空时每次导出选择仓库目录。",
+      "type": "textfield",
+      "required": false
+    },
+    {
+      "name": "obsidianFolder",
+      "title": "Obsidian 导出子目录",
+      "description": "相对于仓库的目录，默认 AI收藏。",
+      "type": "textfield",
+      "required": false
+    }
+  ],
+  "scripts": {
+    "dev": "ray develop",
+    "build": "ray build -e dist -o dist",
+    "lint": "ray lint",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "smoke": "tsx scripts/smoke-local.ts",
+    "format": "prettier --write src tests scripts package.json tsconfig.json README.md",
+    "lint:local": "eslint src && prettier --check src"
+  },
+  "dependencies": {
+    "@raycast/api": "2.7.3",
+    "diff": "9.0.0",
+    "react": "19.0.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "2.2.0",
+    "@types/node": "22.19.17",
+    "@types/react": "19.0.10",
+    "@types/react-test-renderer": "19.0.0",
+    "esbuild": "0.28.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "react-test-renderer": "19.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22.22.2"
+  }
+}
