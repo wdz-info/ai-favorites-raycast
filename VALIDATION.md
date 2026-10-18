@@ -1,4 +1,8 @@
-# 实现与验证记录 · 0.5.0 网页版本
+# 实现与验证记录
+
+当前功能版本：0.5.2，对应提交 [c044abf](https://github.com/wdz-info/ai-favorites-raycast/commit/c044abfffba83988033aec3596dc7de46dc0181b)。以下按版本保留当时的执行结果；历史段落中的“未提交”“未操作桌面”等说明只适用于该次验证过程。使用说明见 [网页使用指南](docs/web-guide.md)，功能变化见 [更新记录](CHANGELOG.md)。
+
+2026-10-18 提交 c044abf 前，已再次通过 `npm run typecheck`、`npm run lint:local`、`npm test`（54 项）、`npm run test:web`（21 类流程）、`npm run build` 和 `git diff --check`。该实现提交已推送至 GitHub。
 
 ## 0.5.2 历史两级分类
 

@@ -1,6 +1,10 @@
 # AI 收藏夹 · AI Favorites for Raycast
 
-独立的 Raycast Extension，用来收藏、检索和复用 Codex、Kiro、Grok 编程会话中的内容。会话、回复和文件均保存独立快照；原始记录删除后仍可阅读。当前本地版本为 0.5.2：Raycast 负责快捷操作，本地网页负责完整管理和阅读，双方共用同一份资料库。历史正文检索、上下文包、备份恢复及只读 CLI / MCP 均保留。
+独立的 Raycast Extension，用来收藏、检索和复用 Codex、Kiro、Grok 编程会话中的内容。会话、回复和文件均保存独立快照；原始记录删除后仍可阅读。当前版本为 0.5.2：Raycast 负责快捷操作，本地网页负责完整管理和阅读，双方共用同一份资料库。历史正文检索、上下文包、备份恢复及只读 CLI / MCP 均保留。
+
+[网页使用指南](docs/web-guide.md) · [更新记录](CHANGELOG.md) · [产品构想与实现状态](docs/product.md) · [验证记录](VALIDATION.md)
+
+0.5.2 为网页历史增加“程序 → 今天 / 昨天 / 历史”两级分类，历史页面和“从历史会话添加”弹窗均可使用。0.5.1 已修复点击历史添加后弹窗直接关闭的问题。
 
 ## 本地安装
 
@@ -55,7 +59,7 @@ npm run web -- --storage /绝对路径/收藏资料库
 
 网页上传恢复上限为 128 MiB，更大的备份可使用 Raycast 的本地恢复入口。外部在线资源仍依赖网络，目录快照不会下载目录外的内容。
 
-## 0.4 日常使用
+## 日常使用
 
 - **找内容**：打开“AI 收藏夹”或“搜索收藏”，输入至少两个字符，结果分为“我的收藏”和“历史会话”。历史每个会话显示最相关的消息，Enter 阅读命中原文及相邻上下文，可继续浏览完整会话。消息的 ID、记录位置与来源保留。
 - **快速保存**：给“收藏剪贴板”设置 Hotkey，运行即保存文本，默认标题来自首个非空行，来源诚实标记为“剪贴板（未关联会话）”。之后再编辑标签和备注。历史中的会话、回复、文件预览也提供“一键收藏”（⌘⇧S）。原有编辑后保存方式继续可用。
@@ -215,9 +219,9 @@ npm run build
 
 `npm run lint` 另含商店清单和作者身份检查；当前 author `wudaizhuang` 的商店校验返回 404，发布前需填真实 Raycast Store 用户名。自用构建与运行不依赖商店发布。详细结果及未验收项见 [验证记录](VALIDATION.md)。
 
-## 参考与许可证
-
 网页自动化验证使用 `npm run test:web`：启动独立的无头 Chrome，覆盖页面操作并生成 `.test-build/web/desktop.png` / `mobile.png`。需要本机已安装 Chrome，也可用 `AI_FAVORITES_CHROME=/可执行文件绝对路径` 指定 Chromium。脚本使用合成收藏和临时资料库，结束后停止服务并清理，不操作当前桌面或系统剪贴板。普通 `npm test` 会先构建网页，额外覆盖 HTTP 读写、鉴权、快照资源，以及 Raycast 命令启动 / 复用真实服务。
+
+## 参考与许可证
 
 [产品构想](docs/product.md)、[Raycast Manifest](https://developers.raycast.com/information/manifest)、[选中文字 API](https://developers.raycast.com/api-reference/environment)、[Clipboard](https://developers.raycast.com/api-reference/clipboard)、[Kiro 会话管理](https://kiro.dev/docs/cli/chat/session-management/)、[Grok 会话格式](https://github.com/xai-org/grok-build/blob/main/crates/codegen/xai-grok-pager/docs/user-guide/17-sessions.md)、[Obsidian Properties](https://obsidian.md/help/properties)、[Obsidian URI](https://obsidian.md/help/uri)。
 
