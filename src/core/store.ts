@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { open, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { withDirectoryLock, writeJsonAtomically } from "./atomic-json";
 import { AIFavorite, FavoriteDraft, FavoriteMetadata, Verification } from "./types";
+import { sha256 } from "./favorite-service";
 import { naturalVersionKey, versionKey } from "./versions";
+import { directoryHash, validDirectorySnapshot } from "./directory-snapshot";
 
 export function validVerification(value: unknown): value is Verification {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -38,9 +40,22 @@ function isFavorite(value: unknown): value is AIFavorite {
     typeof f.title === "string" &&
     typeof f.content === "string" &&
     ["session", "message", "file"].includes(f.type) &&
+    (f.directorySnapshot === undefined ||
+      (f.type === "file" &&
+        validDirectorySnapshot(f.directorySnapshot) &&
+        directoryHash(f.directorySnapshot) === f.snapshot?.sha256)) &&
     ["codex", "claude", "kiro", "gemini", "opencode", "grok", "manual"].includes(f.provider) &&
     (f.verification === undefined || validVerification(f.verification)) &&
     (f.recommended === undefined || typeof f.recommended === "boolean") &&
+    (f.reuseFeedback === undefined ||
+      (f.reuseFeedback !== null &&
+        typeof f.reuseFeedback === "object" &&
+        Number.isInteger(f.reuseFeedback.helpful) &&
+        f.reuseFeedback.helpful >= 0 &&
+        Number.isInteger(f.reuseFeedback.unresolved) &&
+        f.reuseFeedback.unresolved >= 0 &&
+        ["helpful", "unresolved"].includes(f.reuseFeedback.lastResult) &&
+        Number.isFinite(f.reuseFeedback.lastUsedAt))) &&
     Array.isArray(f.tags) &&
     f.tags.every((t) => typeof t === "string") &&
     optionalStrings.every((s) => s === undefined || typeof s === "string") &&
@@ -212,6 +227,112 @@ export class FavoriteStore {
         favorite.recommended = favorite.id === id;
         favorite.updatedAt = Date.now();
       }
+    });
+  }
+  async recordReuse(id: string, result: "helpful" | "unresolved") {
+    if (!["helpful", "unresolved"].includes(result)) throw new Error("复用结果无效。");
+    await this.mutate((favorites) => {
+      const favorite = favorites.find((f) => f.id === id);
+      if (!favorite) throw new Error("该收藏已不存在，请刷新列表。");
+      const old = favorite.reuseFeedback;
+      favorite.reuseFeedback = {
+        helpful: (old?.helpful || 0) + Number(result === "helpful"),
+        unresolved: (old?.unresolved || 0) + Number(result === "unresolved"),
+        lastResult: result,
+        lastUsedAt: Date.now(),
+      };
+    });
+  }
+
+  async backup(path: string) {
+    const favorites = await this.list();
+    const document = {
+      format: "ai-favorites-backup",
+      version: 1,
+      createdAt: Date.now(),
+      sha256: sha256(JSON.stringify(favorites)),
+      favorites,
+    };
+    const handle = await open(path, "wx", 0o600);
+    try {
+      await handle.writeFile(JSON.stringify(document, null, 2) + "\n");
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+    return favorites.length;
+  }
+
+  private async readBackup(path: string): Promise<AIFavorite[]> {
+    const document = JSON.parse(await readFile(path, "utf8"));
+    if (
+      !document ||
+      document.format !== "ai-favorites-backup" ||
+      document.version !== 1 ||
+      !Array.isArray(document.favorites) ||
+      !document.favorites.every(isFavorite) ||
+      new Set(document.favorites.map((f: AIFavorite) => f.id)).size !== document.favorites.length ||
+      document.sha256 !== sha256(JSON.stringify(document.favorites))
+    )
+      throw new Error("备份格式或校验和无效，收藏资料库未修改。");
+    return document.favorites;
+  }
+
+  async previewRestore(path: string) {
+    const backup = await this.readBackup(path);
+    return { count: backup.length, titles: backup.slice(0, 20).map((f) => f.title) };
+  }
+
+  async restore(path: string) {
+    const backup = await this.readBackup(path);
+    return this.mutate((favorites) => {
+      let added = 0,
+        skipped = 0,
+        conflicts = 0;
+      const groups = new Map<string, string>();
+      const duplicate = (original: AIFavorite) =>
+        favorites.find(
+          (f) =>
+            (f.id === original.id && JSON.stringify(f) === JSON.stringify(original)) ||
+            (f.type === original.type &&
+              f.provider === original.provider &&
+              f.sessionId === original.sessionId &&
+              f.messageId === original.messageId &&
+              f.filePath === original.filePath &&
+              f.projectPath === original.projectPath &&
+              f.snapshot.sha256 === original.snapshot.sha256),
+        );
+      for (const original of backup) {
+        const same = duplicate(original);
+        if (original.versionGroupId && same?.versionGroupId && !groups.has(original.versionGroupId))
+          groups.set(original.versionGroupId, same.versionGroupId);
+      }
+      for (const original of backup) {
+        const same = duplicate(original);
+        if (same) {
+          if (original.versionGroupId && !same.versionGroupId) {
+            if (!groups.has(original.versionGroupId)) groups.set(original.versionGroupId, randomUUID());
+            same.versionGroupId = groups.get(original.versionGroupId);
+          }
+          skipped++;
+          continue;
+        }
+        const favorite = structuredClone(original);
+        if (favorites.some((f) => f.id === favorite.id)) {
+          favorite.id = randomUUID();
+          conflicts++;
+        }
+        if (favorite.versionGroupId) {
+          const group = favorite.versionGroupId;
+          if (!groups.has(group)) groups.set(group, randomUUID());
+          favorite.versionGroupId = groups.get(group);
+          if (favorites.some((f) => f.versionGroupId === favorite.versionGroupId && f.recommended))
+            favorite.recommended = false;
+        }
+        favorites.push(favorite);
+        added++;
+      }
+      return { added, skipped, conflicts };
     });
   }
 }

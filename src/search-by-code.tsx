@@ -1,5 +1,6 @@
 import { Action, ActionPanel, Detail, Form, List, useNavigation } from "@raycast/api";
 import { useCallback, useMemo, useState } from "react";
+import { verificationLabels, verificationText } from "./core/knowledge";
 import { codeTerms, searchByCode } from "./core/code-search";
 import { favoriteMarkdown } from "./core/markdown";
 import { runtime } from "./runtime";
@@ -11,10 +12,23 @@ function Results({ query }: { query: string }) {
   const { store, preferences } = useMemo(runtime, []);
   const load = useCallback(() => store.list(), [store]);
   const { value, error, loading, reload } = useResource(load);
+  const [includeInvalid, setIncludeInvalid] = useState(false);
   if (error) return <ErrorDetail error={error} reload={reload} />;
-  const results = searchByCode(value || [], query);
+  const results = searchByCode(value || [], query, { includeInvalid });
+  const toggle = (
+    <Action
+      title={includeInvalid ? "隐藏已失效的收藏" : "显示已失效的收藏"}
+      onAction={() => setIncludeInvalid((old) => !old)}
+    />
+  );
   return (
-    <List isLoading={loading} navigationTitle="报错与代码匹配结果" isShowingDetail searchBarPlaceholder="筛选匹配结果…">
+    <List
+      isLoading={loading}
+      navigationTitle="报错与代码匹配结果"
+      isShowingDetail
+      searchBarPlaceholder="筛选匹配结果…"
+      actions={<ActionPanel>{toggle}</ActionPanel>}
+    >
       <List.EmptyView
         title="没有词项匹配"
         description="可补充异常名、类名或业务关键词。当前按词项检索，无法识别只有语义相似的表达。"
@@ -24,8 +38,9 @@ function Results({ query }: { query: string }) {
           key={favorite.id}
           title={favorite.title}
           subtitle={`匹配分 ${score}`}
-          detail={<List.Item.Detail markdown={favoriteMarkdown(favorite)} />}
+          detail={<List.Item.Detail markdown={`${verificationText(favorite)}\n\n${favoriteMarkdown(favorite)}`} />}
           accessories={[
+            { tag: verificationLabels[favorite.verification?.status || "unverified"] },
             {
               text: matches
                 .slice(0, 3)
@@ -35,6 +50,7 @@ function Results({ query }: { query: string }) {
           ]}
           actions={
             <ActionPanel>
+              {toggle}
               <Action.Push
                 title="查看匹配依据"
                 target={

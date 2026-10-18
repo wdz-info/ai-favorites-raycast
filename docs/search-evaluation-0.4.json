@@ -1,0 +1,369 @@
+{
+  "corpus": "24 manually labelled synthetic queries, 8 synthetic favorites",
+  "scope": "keyword expansion and bounded spelling tolerance; not semantic model quality",
+  "embeddingEvaluation": "not run: no local embedding model configured",
+  "output": [
+    {
+      "mode": "exact",
+      "positiveHitAt5": 0.45,
+      "noResultCorrect": 1,
+      "elapsedMs": 1.26,
+      "results": [
+        {
+          "query": "RetryPolicy",
+          "expected": "retry",
+          "ids": [
+            "retry"
+          ],
+          "correct": true
+        },
+        {
+          "query": "SocketTimeoutException",
+          "expected": "retry",
+          "ids": [
+            "retry"
+          ],
+          "correct": true
+        },
+        {
+          "query": "deadlock",
+          "expected": "deadlock",
+          "ids": [
+            "deadlock"
+          ],
+          "correct": true
+        },
+        {
+          "query": "idempotency",
+          "expected": "idempotency",
+          "ids": [
+            "idempotency"
+          ],
+          "correct": true
+        },
+        {
+          "query": "TTL",
+          "expected": "cache",
+          "ids": [
+            "cache"
+          ],
+          "correct": true
+        },
+        {
+          "query": "OAuth",
+          "expected": "auth",
+          "ids": [
+            "auth"
+          ],
+          "correct": true
+        },
+        {
+          "query": "pagination",
+          "expected": "pagination",
+          "ids": [
+            "pagination"
+          ],
+          "correct": true
+        },
+        {
+          "query": "Hikari",
+          "expected": "pool",
+          "ids": [
+            "pool"
+          ],
+          "correct": true
+        },
+        {
+          "query": "download",
+          "expected": "download",
+          "ids": [
+            "download"
+          ],
+          "correct": true
+        },
+        {
+          "query": "重试",
+          "expected": "retry",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "超时",
+          "expected": "retry",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "死锁",
+          "expected": "deadlock",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "重复提交",
+          "expected": "idempotency",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "缓存",
+          "expected": "cache",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "认证",
+          "expected": "auth",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "分页",
+          "expected": "pagination",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "连接池",
+          "expected": "pool",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "下载",
+          "expected": "download",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "retrypolcy",
+          "expected": "retry",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "pagintion",
+          "expected": "pagination",
+          "ids": [],
+          "correct": false
+        },
+        {
+          "query": "astronomy nebula",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        },
+        {
+          "query": "quantum entanglement",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        },
+        {
+          "query": "火星天气",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        },
+        {
+          "query": "不存在的业务接口",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        }
+      ]
+    },
+    {
+      "mode": "smart",
+      "positiveHitAt5": 1,
+      "noResultCorrect": 1,
+      "elapsedMs": 9.41,
+      "results": [
+        {
+          "query": "RetryPolicy",
+          "expected": "retry",
+          "ids": [
+            "retry"
+          ],
+          "correct": true
+        },
+        {
+          "query": "SocketTimeoutException",
+          "expected": "retry",
+          "ids": [
+            "retry"
+          ],
+          "correct": true
+        },
+        {
+          "query": "deadlock",
+          "expected": "deadlock",
+          "ids": [
+            "deadlock"
+          ],
+          "correct": true
+        },
+        {
+          "query": "idempotency",
+          "expected": "idempotency",
+          "ids": [
+            "idempotency"
+          ],
+          "correct": true
+        },
+        {
+          "query": "TTL",
+          "expected": "cache",
+          "ids": [
+            "cache"
+          ],
+          "correct": true
+        },
+        {
+          "query": "OAuth",
+          "expected": "auth",
+          "ids": [
+            "auth"
+          ],
+          "correct": true
+        },
+        {
+          "query": "pagination",
+          "expected": "pagination",
+          "ids": [
+            "pagination"
+          ],
+          "correct": true
+        },
+        {
+          "query": "Hikari",
+          "expected": "pool",
+          "ids": [
+            "pool"
+          ],
+          "correct": true
+        },
+        {
+          "query": "download",
+          "expected": "download",
+          "ids": [
+            "download"
+          ],
+          "correct": true
+        },
+        {
+          "query": "重试",
+          "expected": "retry",
+          "ids": [
+            "retry"
+          ],
+          "correct": true
+        },
+        {
+          "query": "超时",
+          "expected": "retry",
+          "ids": [
+            "retry"
+          ],
+          "correct": true
+        },
+        {
+          "query": "死锁",
+          "expected": "deadlock",
+          "ids": [
+            "deadlock"
+          ],
+          "correct": true
+        },
+        {
+          "query": "重复提交",
+          "expected": "idempotency",
+          "ids": [
+            "idempotency"
+          ],
+          "correct": true
+        },
+        {
+          "query": "缓存",
+          "expected": "cache",
+          "ids": [
+            "cache"
+          ],
+          "correct": true
+        },
+        {
+          "query": "认证",
+          "expected": "auth",
+          "ids": [
+            "auth"
+          ],
+          "correct": true
+        },
+        {
+          "query": "分页",
+          "expected": "pagination",
+          "ids": [
+            "pagination"
+          ],
+          "correct": true
+        },
+        {
+          "query": "连接池",
+          "expected": "pool",
+          "ids": [
+            "pool"
+          ],
+          "correct": true
+        },
+        {
+          "query": "下载",
+          "expected": "download",
+          "ids": [
+            "download"
+          ],
+          "correct": true
+        },
+        {
+          "query": "retrypolcy",
+          "expected": "retry",
+          "ids": [
+            "retry"
+          ],
+          "correct": true
+        },
+        {
+          "query": "pagintion",
+          "expected": "pagination",
+          "ids": [
+            "pagination"
+          ],
+          "correct": true
+        },
+        {
+          "query": "astronomy nebula",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        },
+        {
+          "query": "quantum entanglement",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        },
+        {
+          "query": "火星天气",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        },
+        {
+          "query": "不存在的业务接口",
+          "expected": null,
+          "ids": [],
+          "correct": true
+        }
+      ]
+    }
+  ]
+}

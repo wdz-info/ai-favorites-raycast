@@ -10,6 +10,7 @@ import { SyncStatus } from "./sync-status";
 import { runtime } from "../runtime";
 import { ErrorDetail, favoriteShortcut, UtilityActions, WarningDetail } from "./common";
 import { FavoriteEditor } from "./favorite-editor";
+import { QuickSave } from "./quick-save";
 import { FilePicker } from "./file-picker";
 import { SourceActions } from "./source-actions";
 
@@ -31,6 +32,7 @@ function FilePreview({ file, session, onSaved }: { file: SessionFile; session: S
               target={<FavoriteEditor onSaved={onSaved} loadDraft={async () => value} />}
             />
           )}
+          {value && <QuickSave draft={value} onSaved={onSaved} />}
           {value && <Action.CopyToClipboard title="复制文件内容" content={value.content} />}
           <UtilityActions reload={reload} />
         </ActionPanel>
@@ -39,7 +41,16 @@ function FilePreview({ file, session, onSaved }: { file: SessionFile; session: S
   );
 }
 
-function SessionContents({ summary, onSaved }: { summary: SessionSummary; onSaved?: () => void }) {
+export function SessionContents({
+  summary,
+  onSaved,
+  focusMessageId,
+}: {
+  summary: SessionSummary;
+  onSaved?: () => void;
+  focusMessageId?: string;
+}) {
+  const [selected, setSelected] = useState<string | undefined>(focusMessageId);
   const { provider, sync, preferences } = useMemo(runtime, []);
   const load = useCallback(async () => {
     const catalog = preferences.autoSync === false ? await sync.read() : await sync.sync();
@@ -94,6 +105,8 @@ function SessionContents({ summary, onSaved }: { summary: SessionSummary; onSave
     <List
       isLoading={loading}
       isShowingDetail
+      selectedItemId={selected}
+      onSelectionChange={(id) => setSelected(id || undefined)}
       navigationTitle={summary.title}
       searchBarPlaceholder="搜索回复和文件路径…"
       searchBarAccessory={
@@ -129,6 +142,7 @@ function SessionContents({ summary, onSaved }: { summary: SessionSummary; onSave
               return (
                 <List.Item
                   key={m.id}
+                  id={m.id}
                   title={m.content.replace(/\s+/g, " ").slice(0, 100)}
                   icon={m.role === "assistant" ? Icon.Message : Icon.Person}
                   keywords={[m.content, draft?.context?.question || ""]}
@@ -166,6 +180,7 @@ function SessionContents({ summary, onSaved }: { summary: SessionSummary; onSave
                           />
                         }
                       />
+                      {draft && <QuickSave draft={draft} onSaved={onSaved} />}
                       {draft && (
                         <Action.Push
                           title="收藏这条回复"
@@ -349,6 +364,10 @@ export function BrowseSessions({
                     }
                   />
                 )}
+                <QuickSave
+                  loadDraft={async () => sessionDraft(await provider.readSession(session))}
+                  onSaved={onSaved}
+                />
                 <SourceActions
                   item={{
                     provider: session.provider,

@@ -27,7 +27,11 @@ type ExtensionPreferences = {
   /** Obsidian 仓库路径 - 留空时每次导出选择仓库目录。 */
   "obsidianVault"?: string,
   /** Obsidian 导出子目录 - 相对于仓库的目录，默认 AI收藏。 */
-  "obsidianFolder"?: string
+  "obsidianFolder"?: string,
+  /** 本地嵌入模型（可选） - Ollama 中已安装的模型名称。仅在手动选择混合检索时使用；不自动下载模型。 */
+  "embeddingModel"?: string,
+  /** 本地嵌入服务地址（可选） - 默认 http://127.0.0.1:11434，仅支持本机 loopback 地址。 */
+  "embeddingEndpoint"?: string
 }
 
 /** Preferences accessible in all the extension's commands */
@@ -52,6 +56,10 @@ declare namespace Preferences {
   export type ExportObsidian = ExtensionPreferences & {}
   /** Preferences accessible in the `search-by-code` command */
   export type SearchByCode = ExtensionPreferences & {}
+  /** Preferences accessible in the `capture-clipboard` command */
+  export type CaptureClipboard = ExtensionPreferences & {}
+  /** Preferences accessible in the `open-web` command */
+  export type OpenWeb = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -73,4 +81,8 @@ declare namespace Arguments {
   export type ExportObsidian = {}
   /** Arguments passed to the `search-by-code` command */
   export type SearchByCode = {}
+  /** Arguments passed to the `capture-clipboard` command */
+  export type CaptureClipboard = {}
+  /** Arguments passed to the `open-web` command */
+  export type OpenWeb = {}
 }

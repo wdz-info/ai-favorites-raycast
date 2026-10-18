@@ -7,3 +7,7 @@ native-qa/
 .env
 .env.*
 *.log
+build/
+
+assets/web/app.js
+assets/web/server.cjs

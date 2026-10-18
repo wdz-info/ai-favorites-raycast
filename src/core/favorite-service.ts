@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { open } from "node:fs/promises";
-import { basename } from "node:path";
+import { open, lstat } from "node:fs/promises";
+import { basename, dirname } from "node:path";
+import { directoryDraft } from "./directory-snapshot";
 import { TextDecoder } from "node:util";
 import { sessionMarkdown } from "./markdown";
 import { expandPath } from "./paths";
@@ -60,6 +61,8 @@ export const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 export async function fileDraft(path: string, session?: Session, sourceFile?: SessionFile): Promise<FavoriteDraft> {
   const filePath = expandPath(path);
+  if ((await lstat(filePath)).isDirectory()) return directoryDraft(filePath, session);
+  if (/^index\.html?$/i.test(basename(filePath))) return directoryDraft(dirname(filePath), session, basename(filePath));
   const handle = await open(filePath, "r");
   let content: string;
   let modifiedAt: number;

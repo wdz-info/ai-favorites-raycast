@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>AI 收藏夹</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/"
+        ><span class="brand-mark">✦</span><span>AI 收藏夹<small>留住值得复用的答案</small></span></a
+      >
+      <div class="search-wrap">
+        <span aria-hidden="true">⌕</span
+        ><input id="search" type="search" placeholder="搜索正文、问题、标签和备注…" aria-label="搜索收藏" /><kbd
+          >⌘ K</kbd
+        >
+      </div>
+      <button id="add" class="primary">＋ 添加收藏</button>
+    </header>
+    <div id="connection" class="connection" hidden></div>
+    <div class="layout" id="layout">
+      <aside class="sidebar">
+        <div class="eyebrow">我的知识库</div>
+        <nav aria-label="收藏分类">
+          <button class="nav-item active" data-nav="all"><span>✦ 全部收藏</span><span id="count-all">0</span></button
+          ><button class="nav-item" data-nav="session"><span>▤ 会话</span><span id="count-session">0</span></button
+          ><button class="nav-item" data-nav="message"><span>☷ AI 回复</span><span id="count-message">0</span></button
+          ><button class="nav-item" data-nav="file"><span>▱ 文件与目录</span><span id="count-file">0</span></button
+          ><button class="nav-item" data-nav="history"><span>◷ 浏览历史会话</span><span>↗</span></button>
+        </nav>
+        <div class="sidebar-filters">
+          <div class="eyebrow">筛选</div>
+          <label
+            >来源<select id="provider">
+              <option value="">全部来源</option>
+              <option value="codex">Codex</option>
+              <option value="kiro">Kiro</option>
+              <option value="grok">Grok</option>
+              <option value="manual">手动来源</option>
+              <option value="claude">Claude</option>
+              <option value="gemini">Gemini</option>
+              <option value="opencode">OpenCode</option>
+            </select></label
+          ><label
+            >项目<select id="project">
+              <option value="">全部项目</option>
+            </select></label
+          ><label
+            >标签<select id="tag">
+              <option value="">全部标签</option>
+            </select></label
+          ><label
+            >验证状态<select id="verification">
+              <option value="">未失效</option>
+              <option value="all">全部状态</option>
+              <option value="verified">已验证</option>
+              <option value="unverified">未验证</option>
+              <option value="invalid">已失效</option>
+            </select></label
+          ><label
+            >检索方式<select id="mode">
+              <option value="exact">精确词项</option>
+              <option value="smart">词项扩展</option>
+            </select></label
+          ><button id="reset" class="text-button">清除筛选</button>
+        </div>
+        <nav id="history-categories" class="history-categories" aria-label="历史会话分类" hidden></nav>
+        <footer class="sidebar-footer">
+          <span class="local-indicator">● 数据保存在这台电脑</span
+          ><button id="backup" class="text-button">备份与恢复</button
+          ><button id="stop" class="text-button muted">停止网页服务</button>
+        </footer>
+      </aside>
+      <section class="results" aria-label="收藏列表">
+        <div class="list-heading">
+          <div>
+            <div class="eyebrow" id="list-eyebrow">FAVORITES</div>
+            <h1 id="list-title">全部收藏 <span id="result-count">0</span></h1>
+          </div>
+          <button id="refresh" class="icon-button" title="刷新" aria-label="刷新">↻</button>
+        </div>
+        <div class="list-tools">
+          <label class="check-label"><input type="checkbox" id="select-page" />选择本页</label
+          ><select id="sort" aria-label="排序方式">
+            <option value="relevance">相关性优先</option>
+            <option value="updated">最近更新</option>
+            <option value="title">标题排序</option>
+          </select>
+        </div>
+        <div id="rows" class="rows" aria-live="polite"></div>
+        <div id="pager" class="pager"></div>
+        <div id="selection" class="selection" hidden>
+          <span id="selection-count"></span><button id="pack-selected" class="primary small">打包复用</button
+          ><button id="clear-selection" class="text-button">清空</button>
+        </div>
+      </section>
+      <main id="reader" class="reader">
+        <div class="empty-reader">
+          <span class="empty-symbol">✧</span>
+          <h2>让好答案，再次派上用场</h2>
+          <p>选择一条收藏开始阅读，或保存新的知识片段。</p>
+          <button class="primary" data-action="add">添加第一条收藏</button>
+        </div>
+      </main>
+    </div>
+    <dialog id="dialog">
+      <div class="dialog-header">
+        <h2 id="dialog-title"></h2>
+        <button id="close-dialog" class="icon-button" aria-label="关闭">×</button>
+      </div>
+      <div id="dialog-body"></div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

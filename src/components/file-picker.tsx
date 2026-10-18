@@ -12,11 +12,13 @@ export function FilePicker({ session, onSaved }: { session?: Session; onSaved?: 
   const { push } = useNavigation();
   const [files, setFiles] = useState<string[]>([]);
   const [path, setPath] = useState("");
-  const [provider, setProvider] = useState<"codex" | "kiro" | "grok">((session?.provider as "codex") || "codex");
+  const [provider, setProvider] = useState<"manual" | "codex" | "kiro" | "grok">(
+    (session?.provider as "codex") || "manual",
+  );
   const [project, setProject] = useState(session?.projectPath || "");
   return (
     <Form
-      navigationTitle="收藏文件版本"
+      navigationTitle="收藏文件或目录版本"
       actions={
         <ActionPanel>
           <Action.SubmitForm
@@ -24,10 +26,14 @@ export function FilePicker({ session, onSaved }: { session?: Session; onSaved?: 
             onSubmit={() =>
               perform(async () => {
                 const selected = files[0] || path.trim();
-                if (!selected) throw new Error("请选择文件或填写绝对路径。");
+                if (!selected) throw new Error("请选择文件、目录或填写 file:// 链接。");
                 const draft = await fileDraft(selected, session);
                 if (!session) draft.provider = provider;
-                draft.projectPath = project.trim() ? expandPath(project.trim()) : dirname(draft.filePath!);
+                draft.projectPath = project.trim()
+                  ? expandPath(project.trim())
+                  : draft.directorySnapshot
+                    ? draft.filePath
+                    : dirname(draft.filePath!);
                 push(<FavoriteEditor loadDraft={async () => draft} onSaved={onSaved} />);
               })
             }
@@ -42,22 +48,22 @@ export function FilePicker({ session, onSaved }: { session?: Session; onSaved?: 
           value={provider}
           onChange={(value) => setProvider(value as typeof provider)}
         >
-          {(["codex", "kiro", "grok"] as const).map((id) => (
+          {(["manual", "codex", "kiro", "grok"] as const).map((id) => (
             <Form.Dropdown.Item key={id} title={providerNames[id]} value={id} />
           ))}
         </Form.Dropdown>
       )}
       <Form.FilePicker
         id="files"
-        title="文本文件"
+        title="文件或目录"
         allowMultipleSelection={false}
-        canChooseDirectories={false}
+        canChooseDirectories={true}
         value={files}
         onChange={setFiles}
       />
       <Form.TextField
         id="path"
-        title="或填写文件路径"
+        title="或填写路径 / file:// 链接"
         value={path}
         onChange={setPath}
         placeholder="~/project/architecture.md"
@@ -71,7 +77,7 @@ export function FilePicker({ session, onSaved }: { session?: Session; onSaved?: 
       />
       <Form.Description
         title="版本"
-        text="保存当前磁盘上的 UTF-8 文本，最大 8 MiB。文件变化后可再次收藏为独立版本，旧快照仍可阅读。"
+        text="文本文件最大 8 MiB；目录最多 2000 个文件、共 64 MiB。选择 index.html 会保存所在目录及资源，从收藏中打开网页快照。目录内符号链接需先换成实际文件。变化后可另存新版本。"
       />
     </Form>
   );

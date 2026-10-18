@@ -45,7 +45,13 @@ export default function CaptureSelection({ onSaved }: { onSaved?: () => void }) 
         ?.slice(0, 100) || "",
     );
     // A clipboard value can belong to a different app, so it needs user-supplied provenance.
-    if (value.method === "selection") setLabel(value.application || "");
+    setLabel(
+      value.method === "selection"
+        ? value.application || "选中文字（未关联会话）"
+        : value.method === "clipboard"
+          ? "剪贴板（未关联会话）"
+          : "手动输入（未关联会话）",
+    );
   }, [value]);
   const source: SourceLocation = {
     label: label.trim(),

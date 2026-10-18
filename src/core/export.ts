@@ -1,6 +1,8 @@
 import { mkdir, realpath, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, sep } from "node:path";
 import { expandPath } from "./paths";
+import { materializeDirectory } from "./directory-snapshot";
+import { fileURLToPath } from "node:url";
 import { AIFavorite } from "./types";
 import { obsidianMarkdown } from "./knowledge";
 
@@ -30,10 +32,17 @@ export async function exportFavorites(favorites: AIFavorite[], vaultPath: string
           .replace(/^\.+|[. ]+$/g, "")
           .slice(0, 100) || "AI收藏";
       let path = "";
+      let markdown = obsidianMarkdown(favorite);
+      if (favorite.directorySnapshot) {
+        const target = await materializeDirectory(favorite.directorySnapshot, favorite.snapshot.sha256, directory);
+        const local = target.startsWith("file:") ? fileURLToPath(target) : target;
+        const link = relative(directory, local).split(sep).map(encodeURIComponent).join("/");
+        markdown += `\n\n[打开导出的目录快照](${link})\n`;
+      }
       for (let suffix = 0; suffix < 1000; suffix++) {
         const candidate = join(directory, `${name}-${favorite.id.slice(0, 8)}${suffix ? `-${suffix}` : ""}.md`);
         try {
-          await writeFile(candidate, obsidianMarkdown(favorite), { flag: "wx", mode: 0o600 });
+          await writeFile(candidate, markdown, { flag: "wx", mode: 0o600 });
           path = candidate;
           break;
         } catch (error) {

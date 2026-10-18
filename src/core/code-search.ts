@@ -20,9 +20,10 @@ export function codeTerms(query: string): { term: string; kind: "异常" | "类�
   return [...terms.values()].sort((a, b) => b.weight - a.weight).slice(0, 60);
 }
 
-export function searchByCode(favorites: AIFavorite[], query: string) {
+export function searchByCode(favorites: AIFavorite[], query: string, options: { includeInvalid?: boolean } = {}) {
   const terms = codeTerms(query);
   return favorites
+    .filter((favorite) => options.includeInvalid || favorite.verification?.status !== "invalid")
     .map((favorite) => {
       const text = [
         favorite.title,

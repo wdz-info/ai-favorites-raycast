@@ -26,12 +26,12 @@ export function AddFavorite({ onSaved }: { onSaved?: () => void }) {
         }
       />
       <List.Item
-        title="文件"
-        subtitle="保存生成或修改过的文本文件版本"
+        title="文件或目录"
+        subtitle="保存文本文件，或包含 index.html 和资源的完整目录版本"
         icon={Icon.Document}
         actions={
           <ActionPanel>
-            <Action.Push title="选择文件" target={<FilePicker onSaved={onSaved} />} />
+            <Action.Push title="选择文件或目录" target={<FilePicker onSaved={onSaved} />} />
           </ActionPanel>
         }
       />

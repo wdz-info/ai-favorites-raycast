@@ -210,11 +210,10 @@ test("file versions remain distinct, with full content after mutation and deleti
   }
 });
 
-test("rejects directories, binary files, invalid UTF-8, oversized files and relative paths; empty UTF-8 files work", async () => {
+test("rejects standalone binary files, invalid UTF-8, oversized files and relative paths; empty UTF-8 files work", async () => {
   const f = await fixture();
   try {
     const path = join(f.project, "file.txt");
-    await assert.rejects(fileDraft(f.project), /普通文本/);
     await writeFile(path, Buffer.from([0, 1, 2]));
     await assert.rejects(fileDraft(path), /二进制/);
     await writeFile(path, Buffer.from([0xff, 0xfe]));

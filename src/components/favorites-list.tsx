@@ -9,6 +9,8 @@ import {
   List,
   useNavigation,
   Keyboard,
+  showToast,
+  Toast,
 } from "@raycast/api";
 import { useCallback, useMemo, useState } from "react";
 import { basename } from "node:path";
@@ -19,7 +21,7 @@ import { sourceStatus } from "../core/sync";
 import { providerNames } from "../providers/registry";
 import { SyncStatus } from "./sync-status";
 import { FavoriteStore } from "../core/store";
-import { useResource } from "../hooks";
+import { useResource, useDebounced } from "../hooks";
 import { perform, runtime } from "../runtime";
 import { AddFavorite } from "./add-favorite";
 import { BrowseSessions } from "./browse-sessions";
@@ -29,16 +31,25 @@ import { SourceActions } from "./source-actions";
 import { CompareVersions, ExportForm, FavoriteSelection, PackPreview, VerificationForm } from "./knowledge-actions";
 import { verificationLabels, verificationText } from "../core/knowledge";
 import CaptureSelection from "../capture-selection";
+import { HistoryHit } from "../core/history-index";
+import { FavoriteReader, RetrievalMode } from "../core/reader";
+import { highlight } from "../core/text-search";
+import { HistoryResults } from "./history-results";
+import { BackupRestore } from "./backup-restore";
+import CaptureClipboard from "../capture-clipboard";
 import SearchByCode from "../search-by-code";
+import { OpenWebAction } from "./open-web-action";
 
 const icons = { session: Icon.Message, message: Icon.SpeechBubble, file: Icon.Document };
-const labels = { session: "会话", message: "AI 回复", file: "文件版本" };
+const labels = { session: "会话", message: "AI 回复", file: "文件 / 目录版本" };
 
 function FilterForm({
   favorites,
   filter,
   apply,
+  projectPaths = [],
 }: {
+  projectPaths?: string[];
   favorites: AIFavorite[];
   filter: FavoriteFilter;
   apply: (filter: FavoriteFilter) => void;
@@ -48,7 +59,9 @@ function FilterForm({
   const [agent, setAgent] = useState(filter.provider || "all");
   const [project, setProject] = useState(filter.project === undefined ? "all" : JSON.stringify(filter.project));
   const [tag, setTag] = useState(filter.tag || "");
-  const projects = [...new Set(favorites.map((f) => f.projectPath || ""))].sort();
+  const [verification, setVerification] = useState(filter.verification || (filter.includeInvalid ? "all" : "active"));
+  const [version, setVersion] = useState(filter.version || "");
+  const projects = [...new Set([...favorites.map((f) => f.projectPath || ""), ...projectPaths])].sort();
   const tags = [...new Set(favorites.flatMap((f) => f.tags))].sort();
   return (
     <Form
@@ -63,6 +76,11 @@ function FilterForm({
                 provider: agent === "all" ? undefined : (agent as "codex"),
                 project: project === "all" ? undefined : JSON.parse(project),
                 tag: tag || undefined,
+                verification: ["verified", "unverified", "invalid"].includes(verification)
+                  ? (verification as "verified" | "unverified" | "invalid")
+                  : undefined,
+                includeInvalid: verification === "all" || verification === "invalid",
+                version: version.trim() || undefined,
               });
               pop();
             }}
@@ -70,6 +88,14 @@ function FilterForm({
         </ActionPanel>
       }
     >
+      <Form.Dropdown id="verification" title="验证状态" value={verification} onChange={setVerification}>
+        <Form.Dropdown.Item title="未失效的收藏" value="active" />
+        <Form.Dropdown.Item title="全部（含已失效）" value="all" />
+        <Form.Dropdown.Item title="已验证" value="verified" />
+        <Form.Dropdown.Item title="未验证" value="unverified" />
+        <Form.Dropdown.Item title="已失效" value="invalid" />
+      </Form.Dropdown>
+      <Form.TextField id="version" title="当前任务版本（可选）" value={version} onChange={setVersion} />
       <Form.Dropdown id="agent" title="来源 Agent" value={agent} onChange={setAgent}>
         <Form.Dropdown.Item title="全部 Agent" value="all" />
         {(["codex", "kiro", "grok", "manual", "claude", "gemini", "opencode"] as const).map((id) => (
@@ -115,6 +141,7 @@ export function FavoriteActions({
   return (
     <>
       <ActionPanel.Section title="收藏">
+        <OpenWebAction favoriteId={favorite.id} storageDirectory={store.directory} />
         <Action.Push
           title="编辑标题、标签与备注"
           icon={Icon.Pencil}
@@ -131,6 +158,26 @@ export function FavoriteActions({
         <Action.CopyToClipboard title="复制快照指纹" content={favorite.snapshot.sha256} />
       </ActionPanel.Section>
       <ActionPanel.Section title="复用与验证">
+        <Action
+          title="这次复用有用"
+          onAction={() =>
+            perform(async () => {
+              await store.recordReuse(favorite.id, "helpful");
+              await showToast({ style: Toast.Style.Success, title: "已记录这次有用" });
+              reload();
+            })
+          }
+        />
+        <Action
+          title="这次未解决问题"
+          onAction={() =>
+            perform(async () => {
+              await store.recordReuse(favorite.id, "unresolved");
+              await showToast({ style: Toast.Style.Success, title: "已记录未解决，保留原验证状态" });
+              reload();
+            })
+          }
+        />
         <Action.Push title="生成上下文包" target={<PackPreview favorites={[favorite]} />} />
         <Action.Push title="导出到 Obsidian" target={<ExportForm favorites={[favorite]} />} />
         <Action.Push title="对比收藏版本" target={<CompareVersions favorite={favorite} onSaved={reload} />} />
@@ -201,6 +248,14 @@ function FavoriteDetail({
           <Detail.Metadata.Label title="保存时间" text={new Date(favorite.snapshot.capturedAt).toLocaleString()} />
           <Detail.Metadata.Label title="版本" text={favorite.snapshot.sha256.slice(0, 12)} />
           <Detail.Metadata.Label title="验证记录" text={verificationText(favorite)} />
+          <Detail.Metadata.Label
+            title="复用反馈"
+            text={
+              favorite.reuseFeedback
+                ? `有用 ${favorite.reuseFeedback.helpful} 次 · 未解决 ${favorite.reuseFeedback.unresolved} 次`
+                : "未记录"
+            }
+          />
           <Detail.Metadata.Label title="推荐版本" text={favorite.recommended ? "是" : "未标记"} />
           {favorite.filePath && <Detail.Metadata.Label title="原始文件" text={favorite.filePath} />}
           {favorite.source.line && <Detail.Metadata.Label title="源记录" text={`第 ${favorite.source.line} 行`} />}
@@ -225,7 +280,7 @@ function FavoriteDetail({
 }
 
 export function FavoritesList({ searchMode = false }: { searchMode?: boolean }) {
-  const { store, sync, preferences } = useMemo(runtime, []);
+  const { store, sync, preferences, historyIndex } = useMemo(runtime, []);
   const load = useCallback(() => store.list(), [store]);
   const { value, error, loading, reload } = useResource(load, preferences.autoSync === false ? 0 : 15000);
   const catalogLoad = useCallback(
@@ -234,12 +289,78 @@ export function FavoritesList({ searchMode = false }: { searchMode?: boolean }) 
   );
   const history = useResource(catalogLoad, preferences.autoSync === false ? 0 : 15000);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<FavoriteFilter>({});
+  const [filter, setFilter] = useState<FavoriteFilter>({ includeInvalid: false });
+  const [mode, setMode] = useState<RetrievalMode>("exact");
+  const debounced = useDebounced(query);
   const index = useMemo(() => new FavoriteSearchIndex(value || []), [value]);
-  const favorites = index.search(query, filter);
+  const reader = useMemo(
+    () => new FavoriteReader(store, { model: preferences.embeddingModel, endpoint: preferences.embeddingEndpoint }),
+    [store, preferences.embeddingModel, preferences.embeddingEndpoint],
+  );
+  const semanticLoad = useCallback(
+    async () =>
+      mode === "hybrid" && debounced.trim()
+        ? { query: debounced, ...(await reader.search(debounced, filter, mode)) }
+        : undefined,
+    [reader, mode, debounced, filter, value],
+  );
+  const semantic = useResource(semanticLoad);
+  const hits =
+    mode === "hybrid" && semantic.value?.query === query
+      ? semantic.value.hits
+      : index.results(query, filter, mode === "exact" ? "exact" : "smart");
+  const hitMap = new Map(hits.map((hit) => [hit.favorite.id, hit]));
+  const favorites = hits.map((hit) => hit.favorite);
+  const ensureCatalog = useMemo(() => {
+    let pending: ReturnType<typeof sync.sync> | undefined;
+    return () => {
+      if (history.value) return Promise.resolve(history.value);
+      if (!pending)
+        pending = sync.sync().catch((error) => {
+          pending = undefined;
+          throw error;
+        });
+      return pending;
+    };
+  }, [history.value, sync]);
+  const [indexProgress, setIndexProgress] = useState({ done: 0, total: 0 });
+  const [historyProjects, setHistoryProjects] = useState<string[]>([]);
+  const [partialHistory, setPartialHistory] = useState<{ query: string; hits: HistoryHit[] }>();
+  const historyLoad = useCallback(
+    async (signal: AbortSignal) => {
+      if (debounced.trim().length < 2) return { query: debounced, hits: [], warnings: [] as string[] };
+      const catalog = await ensureCatalog();
+      if (!signal.aborted)
+        setHistoryProjects([...new Set(catalog.sessions.map((session) => session.projectPath || ""))]);
+      const status = await historyIndex.refresh(catalog, async (done, total) => {
+        if (signal.aborted || (done % 25 !== 0 && done !== 1 && done !== total)) return;
+        setIndexProgress({ done, total });
+        if (done > 1) {
+          const partial = await historyIndex.search(debounced, {
+            mode: mode === "exact" ? "exact" : "smart",
+            provider: filter.provider,
+            project: filter.project,
+          });
+          if (!signal.aborted) setPartialHistory({ query: debounced, hits: partial });
+        }
+      });
+      return {
+        query: debounced,
+        hits: await historyIndex.search(debounced, {
+          mode: mode === "exact" ? "exact" : "smart",
+          provider: filter.provider,
+          project: filter.project,
+        }),
+        warnings: status.warnings,
+      };
+    },
+    [debounced, ensureCatalog, historyIndex, mode, filter.provider, filter.project],
+  );
+  const historySearch = useResource(historyLoad);
   if (error) return <ErrorDetail error={error} reload={reload} />;
   const generalActions = (
     <>
+      <OpenWebAction storageDirectory={store.directory} />
       <Action.Push
         title="添加 AI 收藏"
         icon={Icon.Plus}
@@ -251,18 +372,40 @@ export function FavoritesList({ searchMode = false }: { searchMode?: boolean }) 
         title="按类型、项目、标签和来源筛选"
         icon={Icon.Filter}
         shortcut={{ modifiers: ["cmd", "shift"], key: "f" }}
-        target={<FilterForm favorites={value || []} filter={filter} apply={setFilter} />}
+        target={<FilterForm favorites={value || []} projectPaths={historyProjects} filter={filter} apply={setFilter} />}
       />
       <Action
         title="清空筛选"
         icon={Icon.XMarkCircle}
         onAction={() => {
-          setFilter({});
+          setFilter({ includeInvalid: false });
           setQuery("");
         }}
       />
       <Action.CopyToClipboard title="复制收藏资料库路径" content={store.filePath} />
       <Action.Push title="同步状态" target={<SyncStatus />} />
+      <Action
+        title="收藏剪贴板"
+        onAction={async () => {
+          await CaptureClipboard();
+          reload();
+        }}
+      />
+      <Action.Push title="备份与恢复收藏" target={<BackupRestore onSaved={reload} />} />
+      <ActionPanel.Section title="搜索方式">
+        <Action title="精确关键词搜索" onAction={() => setMode("exact")} />
+        <Action title="自然语言与模糊搜索" onAction={() => setMode("smart")} />
+        <Action title="本地语义混合搜索（实验）" onAction={() => setMode("hybrid")} />
+        <Action
+          title="重建历史正文索引"
+          onAction={() =>
+            perform(async () => {
+              await historyIndex.clear();
+              historySearch.reload();
+            })
+          }
+        />
+      </ActionPanel.Section>
       <Action.Push title="多选收藏打包上下文" target={<FavoriteSelection mode="pack" />} />
       <Action.Push title="批量导出到 Obsidian" target={<FavoriteSelection mode="export" />} />
       <Action.Push title="选中文字快捷收藏" target={<CaptureSelection onSaved={reload} />} />
@@ -272,13 +415,13 @@ export function FavoritesList({ searchMode = false }: { searchMode?: boolean }) 
   );
   return (
     <List
-      isLoading={loading}
+      isLoading={loading || historySearch.loading || (mode === "hybrid" && semantic.loading)}
       isShowingDetail
       filtering={false}
       searchText={query}
       onSearchTextChange={setQuery}
       navigationTitle={searchMode ? "搜索收藏" : "AI 收藏夹"}
-      searchBarPlaceholder="搜索正文、问题、标签、备注或路径…"
+      searchBarPlaceholder="搜索收藏与历史正文；操作菜单可切换自然语言搜索…"
       searchBarAccessory={
         <List.Dropdown
           tooltip="收藏类型"
@@ -300,10 +443,46 @@ export function FavoritesList({ searchMode = false }: { searchMode?: boolean }) 
         }
         icon={Icon.Star}
       />
+      {historySearch.loading && query.trim().length >= 2 ? (
+        <List.Section title="历史正文索引">
+          <List.Item
+            title={
+              indexProgress.total
+                ? `正在处理 ${indexProgress.done} / ${indexProgress.total} 个会话`
+                : "正在准备历史正文索引…"
+            }
+            subtitle="首次需要建立索引；收藏可立即搜索，下方逐步显示已完成的历史结果"
+            icon={Icon.ArrowClockwise}
+          />
+        </List.Section>
+      ) : null}
+      {historySearch.error ||
+      semantic.error ||
+      semantic.value?.warnings.length ||
+      historySearch.value?.warnings.length ? (
+        <List.Section title="检索提示">
+          <List.Item
+            title="部分结果或来源需要关注"
+            icon={Icon.Warning}
+            detail={
+              <List.Item.Detail
+                markdown={[
+                  historySearch.error,
+                  semantic.error,
+                  ...(semantic.value?.warnings || []),
+                  ...(historySearch.value?.warnings || []),
+                ]
+                  .filter(Boolean)
+                  .join("\n\n")}
+              />
+            }
+          />
+        </List.Section>
+      ) : null}
       {(["session", "message", "file"] as const).map((type) => (
         <List.Section
           key={type}
-          title={labels[type]}
+          title={`我的收藏 · ${labels[type]}`}
           subtitle={`${favorites.filter((f) => f.type === type).length}${filter.project !== undefined ? ` · ${filter.project || "无项目"}` : ""}${filter.tag ? ` · #${filter.tag}` : ""}`}
         >
           {favorites
@@ -324,7 +503,7 @@ export function FavoritesList({ searchMode = false }: { searchMode?: boolean }) 
                 ]}
                 detail={
                   <List.Item.Detail
-                    markdown={favoriteMarkdown(favorite)}
+                    markdown={`${query ? `## 命中片段\n\n${highlight(hitMap.get(favorite.id)?.snippet || "", hitMap.get(favorite.id)?.matches || [])}\n\n${hitMap.get(favorite.id)?.reasons.join(" · ")}\n\n---\n\n` : ""}${favoriteMarkdown(favorite)}`}
                     metadata={
                       <List.Item.Detail.Metadata>
                         <List.Item.Detail.Metadata.Label title="项目" text={favorite.projectPath || "无项目"} />
@@ -370,6 +549,13 @@ export function FavoritesList({ searchMode = false }: { searchMode?: boolean }) 
             ))}
         </List.Section>
       ))}
+      {query.trim().length >= 2 && (historySearch.value?.query === query || partialHistory?.query === query) && (
+        <HistoryResults
+          hits={historySearch.value?.query === query ? historySearch.value.hits : partialHistory?.hits || []}
+          onSaved={reload}
+          openCodexLinks={preferences.openCodexLinks}
+        />
+      )}
     </List>
   );
 }

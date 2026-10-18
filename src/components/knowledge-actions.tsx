@@ -12,28 +12,64 @@ import { ErrorDetail } from "./common";
 
 export function PackPreview({ favorites }: { favorites: AIFavorite[] }) {
   const [task, setTask] = useState("");
+  const [mode, setMode] = useState<"full" | "compact" | "code">("full");
+  const [maxChars, setMaxChars] = useState("20000");
+  const [paths, setPaths] = useState("include");
+  const [excluded, setExcluded] = useState<string[]>([]);
+  const options = {
+    mode,
+    maxChars:
+      /^\d+$/.test(maxChars) && Number(maxChars) >= 1000 && Number(maxChars) <= 200000 ? Number(maxChars) : 20000,
+    includePaths: paths === "include",
+    excludeIds: excluded,
+  };
+  const hasSelection = favorites.some((f) => !excluded.includes(f.id));
+  const pack = hasSelection ? contextPack(favorites, task, options) : "";
   return (
     <Form
       navigationTitle="补充当前任务"
       actions={
         <ActionPanel>
-          <Action.Push
-            title="预览上下文包"
-            target={
-              <Detail
-                navigationTitle="上下文包预览"
-                markdown={contextPack(favorites, task)}
-                actions={
-                  <ActionPanel>
-                    <Action.CopyToClipboard title="复制上下文包" content={contextPack(favorites, task)} />
-                  </ActionPanel>
-                }
-              />
-            }
-          />
+          {hasSelection && (
+            <Action.Push
+              title="预览上下文包"
+              target={
+                <Detail
+                  navigationTitle="上下文包预览"
+                  markdown={pack}
+                  actions={
+                    <ActionPanel>
+                      <Action.CopyToClipboard title="复制上下文包" content={pack} />
+                    </ActionPanel>
+                  }
+                />
+              }
+            />
+          )}
         </ActionPanel>
       }
     >
+      <Form.Dropdown id="mode" title="内容模式" value={mode} onChange={(v) => setMode(v as typeof mode)}>
+        <Form.Dropdown.Item title="完整原文（受长度预算限制）" value="full" />
+        <Form.Dropdown.Item title="精简片段" value="compact" />
+        <Form.Dropdown.Item title="仅代码" value="code" />
+      </Form.Dropdown>
+      <Form.TextField
+        id="maxChars"
+        title="最大字符数"
+        value={maxChars}
+        onChange={setMaxChars}
+        info="1000–200000；不合法时使用 20000。原快照始终完整保存。"
+      />
+      <Form.Dropdown id="paths" title="来源路径" value={paths} onChange={setPaths}>
+        <Form.Dropdown.Item title="包含来源路径" value="include" />
+        <Form.Dropdown.Item title="省略来源中的本机路径" value="exclude" />
+      </Form.Dropdown>
+      <Form.TagPicker id="excluded" title="排除收藏" value={excluded} onChange={setExcluded}>
+        {favorites.map((f) => (
+          <Form.TagPicker.Item key={f.id} value={f.id} title={f.title} />
+        ))}
+      </Form.TagPicker>
       <Form.TextArea
         id="task"
         title="当前任务（可选）"
@@ -43,7 +79,11 @@ export function PackPreview({ favorites }: { favorites: AIFavorite[] }) {
       />
       <Form.Description
         title="已选收藏"
-        text={`${favorites.length} 条；保留问题、方案、适用条件、代码、来源及验证记录。`}
+        text={
+          hasSelection
+            ? `${favorites.filter((favorite) => !excluded.includes(favorite.id)).length} 条；保留问题、方案、适用条件、代码、来源及验证记录。`
+            : "请至少保留一条收藏，再预览和复制。"
+        }
       />
     </Form>
   );

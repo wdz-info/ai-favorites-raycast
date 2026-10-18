@@ -11,6 +11,7 @@ import { FavoriteStore } from "../src/core/store";
 import { AIFavorite } from "../src/core/types";
 import { capturedDraft } from "../src/core/capture";
 import { fileDraft } from "../src/core/favorite-service";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // Render the actual command components with only the native Raycast boundary mocked.
 // No production data, desktop settings, clipboard, or application links are changed.
@@ -35,6 +36,7 @@ const ready = (async () => {
     FavoritesList: React.ComponentType<{ searchMode?: boolean }>;
     BrowseSessions: React.ComponentType<{ mode?: string }>;
     AddFavorite: React.ComponentType;
+    PackPreview: React.ComponentType<{ favorites: AIFavorite[] }>;
     FavoriteSelection: React.ComponentType<{ mode: "pack" | "export" }>;
     VerificationForm: React.ComponentType<{ favorite: AIFavorite; onSaved: () => void }>;
     CompareVersions: React.ComponentType<{ favorite: AIFavorite; onSaved: () => void }>;
@@ -42,6 +44,7 @@ const ready = (async () => {
     CaptureSelection: React.ComponentType;
     SearchByCode: React.ComponentType;
     SyncCommand: () => Promise<void>;
+    OpenWeb: () => Promise<void>;
     environment: { launchType: string };
     uiState: {
       preferences: {
@@ -147,6 +150,37 @@ async function pushAction(renderer: ReactTestRenderer, title: string) {
   return render(node(renderer, "Action.Push", title).props.target, renderer);
 }
 
+test("directory picker accepts a Chinese file URL and opens the saved HTML version after source deletion", async () => {
+  const f = await fixture();
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    const source = join(f.root, "指标目录");
+    await mkdir(source);
+    await writeFile(join(source, "index.html"), "<title>目录阅读</title><h1>指标说明</h1>");
+    renderer = await render(React.createElement(f.AddFavorite));
+    renderer = await pushAction(renderer, "选择文件或目录");
+    assert.equal(node(renderer, "Form.FilePicker").props.canChooseDirectories, true);
+    await act(async () =>
+      node(renderer!, "Form.TextField", "或填写路径 / file:// 链接").props.onChange(
+        pathToFileURL(join(source, "index.html")).href,
+      ),
+    );
+    await act(async () => node(renderer!, "Action.SubmitForm").props.onSubmit());
+    renderer = await render(f.uiState.pushed.pop()!, renderer);
+    await act(async () => node(renderer!, "Action.SubmitForm").props.onSubmit());
+    assert.equal((await f.store.list())[0].directorySnapshot?.entryPath, "index.html");
+    await rm(source, { recursive: true });
+    renderer = await render(React.createElement(f.FavoritesList), renderer);
+    await act(async () => node(renderer!, "Action", "打开已收藏的网页快照").props.onAction());
+    const { readFile } = await import("node:fs/promises");
+    assert.match(await readFile(fileURLToPath(f.uiState.opened[0]), "utf8"), /指标说明/);
+    assert.equal(f.uiState.toasts.filter((t) => t.style === "failure").length, 0);
+  } finally {
+    if (renderer) await act(async () => renderer!.unmount());
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
 test("Raycast UI flow saves session, reply with context, and file; previews, searches and exposes copy/source actions", async () => {
   const f = await fixture();
   let renderer: ReactTestRenderer | undefined;
@@ -183,9 +217,9 @@ test("Raycast UI flow saves session, reply with context, and file; previews, sea
     assert.equal((await f.store.list()).find((v) => v.type === "message")?.context?.question, "How does retry work?");
 
     renderer = await render(React.createElement(f.AddFavorite), renderer);
-    renderer = await pushAction(renderer, "选择文件");
+    renderer = await pushAction(renderer, "选择文件或目录");
     await act(async () => {
-      node(renderer!, "Form.TextField", "或填写文件路径").props.onChange(f.file);
+      node(renderer!, "Form.TextField", "或填写路径 / file:// 链接").props.onChange(f.file);
     });
     await act(async () => {
       await node(renderer!, "Action.SubmitForm").props.onSubmit();
@@ -226,9 +260,9 @@ test("Raycast UI edits tags/notes, applies combined filters, removes only favori
   let renderer: ReactTestRenderer | undefined;
   try {
     renderer = await render(React.createElement(f.AddFavorite));
-    renderer = await pushAction(renderer, "选择文件");
+    renderer = await pushAction(renderer, "选择文件或目录");
     await act(async () => {
-      node(renderer!, "Form.TextField", "或填写文件路径").props.onChange(f.file);
+      node(renderer!, "Form.TextField", "或填写路径 / file:// 链接").props.onChange(f.file);
       node(renderer!, "Form.TextField", "项目目录").props.onChange(f.root);
     });
     await act(async () => {
@@ -405,6 +439,126 @@ test("background command respects sync preference, persists catalog when enabled
     assert.equal(f.uiState.toasts.length, 0);
   } finally {
     f.environment.launchType = "user";
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+test("unified Raycast search locates uncollected history text, opens exact context and saves one reply without a form", async () => {
+  const f = await fixture();
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    renderer = await render(React.createElement(f.FavoritesList));
+    await act(async () => node(renderer!, "List").props.onSearchTextChange("idempotency"));
+    const deadline = Date.now() + 5000;
+    while (
+      !renderer.root.findAll((n) => String(n.type) === "Action.Push" && n.props.title === "阅读命中消息与上下文").length
+    ) {
+      assert.ok(Date.now() < deadline, "Historical body match did not appear");
+      await act(settle);
+    }
+    assert.equal((await f.store.list()).length, 0);
+    renderer = await pushAction(renderer, "阅读命中消息与上下文");
+    assert.ok(node(renderer, "Detail").props.markdown.includes("ui-reply"));
+    assert.ok(node(renderer, "Detail").props.markdown.includes("How does retry work?"));
+    assert.ok(node(renderer, "Detail").props.markdown.includes("Use idempotency"));
+    await act(async () => node(renderer!, "Action", "一键收藏").props.onAction());
+    const [favorite] = await f.store.list();
+    assert.equal(favorite.messageId, "ui-reply");
+    assert.equal(favorite.context?.question, "How does retry work?");
+    assert.equal(favorite.source.line, 3);
+    await act(async () => node(renderer!, "Action", "一键收藏").props.onAction());
+    assert.equal((await f.store.list()).length, 1);
+  } finally {
+    if (renderer) await act(async () => renderer!.unmount());
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+test("clipboard action saves immediately with honest provenance and backup form previews before merge restore", async () => {
+  const f = await fixture();
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    f.uiState.clipboard = "# A clipboard solution\n\nCopied code and explanation";
+    renderer = await render(React.createElement(f.FavoritesList));
+    await act(async () => node(renderer!, "Action", "收藏剪贴板").props.onAction());
+    renderer = await render(React.createElement(f.FavoritesList), renderer);
+    assert.ok(node(renderer, "List.Item", "A clipboard solution"));
+    const [favorite] = await f.store.list();
+    assert.equal(favorite.title, "A clipboard solution");
+    assert.equal(favorite.provider, "manual");
+    assert.equal(favorite.sessionId, undefined);
+    assert.equal(favorite.source.captureMethod, "clipboard");
+    await act(async () => node(renderer!, "Action", "收藏剪贴板").props.onAction());
+    renderer = await render(React.createElement(f.FavoritesList), renderer);
+    assert.equal((await f.store.list()).length, 1);
+    renderer = await pushAction(renderer, "备份与恢复收藏");
+    await act(async () => node(renderer!, "Form.TextField", "备份目录路径").props.onChange(f.root));
+    await act(async () => node(renderer!, "Action", "创建新备份文件").props.onAction());
+    const { readdir } = await import("node:fs/promises");
+    const backup = (await readdir(f.root)).find((name) => name.startsWith("ai-favorites-") && name.endsWith(".json"));
+    assert.ok(backup);
+    await act(async () => node(renderer!, "Form.FilePicker", "选择恢复文件").props.onChange([join(f.root, backup!)]));
+    await act(async () => node(renderer!, "Action", "检查所选备份").props.onAction());
+    assert.ok(node(renderer, "Action.Push", "预览备份内容"));
+    await f.store.remove(favorite.id);
+    await act(async () => node(renderer!, "Action", "合并恢复（保留现有收藏）").props.onAction());
+    const restored = await f.store.list();
+    assert.equal(restored.length, 1);
+    assert.equal(restored[0].content, favorite.content);
+  } finally {
+    if (renderer) await act(async () => renderer!.unmount());
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+test("context pack disables preview when every item is excluded instead of copying an error message", async () => {
+  const f = await fixture();
+  let renderer: ReactTestRenderer | undefined;
+  try {
+    const { favorite } = await f.store.add(await fileDraft(f.file), { title: "pack", tags: [], note: "" });
+    renderer = await render(React.createElement(f.PackPreview, { favorites: [favorite] }));
+    assert.ok(node(renderer, "Action.Push", "预览上下文包"));
+    await act(async () => node(renderer!, "Form.TagPicker", "排除收藏").props.onChange([favorite.id]));
+    assert.equal(
+      renderer.root.findAll((n) => String(n.type) === "Action.Push" && n.props.title === "预览上下文包").length,
+      0,
+    );
+    assert.ok(node(renderer, "Form.Description", "已选收藏").props.text.includes("至少保留一条"));
+  } finally {
+    if (renderer) await act(async () => renderer!.unmount());
+    await rm(f.root, { recursive: true, force: true });
+  }
+});
+
+test("Raycast web command and favorite action open the real local service with the same configured library", async () => {
+  const f = await fixture();
+  let renderer: ReactTestRenderer | undefined;
+  let url: URL | undefined;
+  try {
+    const saved = await f.store.add(
+      capturedDraft("网页共享收藏", "Shared content from Raycast", "manual", { label: "fixture" }),
+      { title: "网页共享收藏", tags: [], note: "" },
+    );
+    await f.OpenWeb();
+    url = new URL(f.uiState.opened[0]);
+    const token = new URLSearchParams(url.hash.slice(1)).get("token")!;
+    const result = await fetch(`${url.origin}/api/favorites`, { headers: { Authorization: `Bearer ${token}` } });
+    assert.equal((await result.json()).items[0].id, saved.favorite.id);
+    renderer = await render(React.createElement(f.FavoritesList));
+    await act(async () => node(renderer!, "Action", "在网页中阅读这条收藏").props.onAction());
+    const reading = new URL(f.uiState.opened[1]);
+    assert.equal(reading.origin, url.origin);
+    assert.equal(new URLSearchParams(reading.hash.slice(1)).get("favorite"), saved.favorite.id);
+    assert.equal(node(renderer, "Action", "打开网页收藏夹").props.shortcut.key, "o");
+    assert.equal(f.uiState.toasts.filter((t) => t.style === "failure").length, 0);
+  } finally {
+    if (renderer) await act(async () => renderer!.unmount());
+    if (url)
+      await fetch(`${url.origin}/api/shutdown`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${new URLSearchParams(url.hash.slice(1)).get("token")}` },
+      }).catch(() => {});
+    await new Promise((resolve) => setTimeout(resolve, 120));
     await rm(f.root, { recursive: true, force: true });
   }
 });

@@ -64,6 +64,7 @@ export const Form = Object.assign(
   ),
   {
     Dropdown: Object.assign(component("Form.Dropdown"), { Item: component("Form.Dropdown.Item") }),
+    TagPicker: Object.assign(component("Form.TagPicker"), { Item: component("Form.TagPicker.Item") }),
     DatePicker: Object.assign(component("Form.DatePicker"), { Type: { Date: "date" } }),
   },
 );
@@ -71,6 +72,7 @@ export const Icon = new Proxy({}, { get: (_, key) => String(key) });
 export const Keyboard = {
   Shortcut: {
     Common: {
+      Duplicate: { modifiers: ["cmd", "shift"], key: "s" },
       Refresh: { modifiers: ["cmd"], key: "r" },
       Edit: { modifiers: ["cmd"], key: "e" },
       Copy: { modifiers: ["cmd", "shift"], key: "c" },
@@ -78,7 +80,7 @@ export const Keyboard = {
     },
   },
 };
-export const Toast = { Style: { Success: "success", Failure: "failure" } };
+export const Toast = { Style: { Success: "success", Failure: "failure", Animated: "animated" } };
 export const Alert = { ActionStyle: { Destructive: "destructive" } };
 export const confirmAlert = async () => true;
 export const showToast = async (toast: (typeof uiState.toasts)[number]) => {
@@ -102,5 +104,5 @@ export const getSelectedText = async () => {
 };
 export const getFrontmostApplication = async () => ({ name: "Fixture App" });
 export const Clipboard = { readText: async () => uiState.clipboard };
-export const environment = { launchType: "user" };
+export const environment = { launchType: "user", assetsPath: `${process.cwd()}/assets` };
 export const LaunchType = { Background: "background", UserInitiated: "user" };

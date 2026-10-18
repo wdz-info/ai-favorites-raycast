@@ -12,7 +12,7 @@
     "macOS"
   ],
   "license": "MIT",
-  "version": "0.3.0",
+  "version": "0.5.2",
   "commands": [
     {
       "name": "favorites",
@@ -94,6 +94,23 @@
       "title": "用报错或代码找收藏",
       "description": "匹配异常名、类名及关键词，查找相关历史方案",
       "mode": "view"
+    },
+    {
+      "name": "capture-clipboard",
+      "title": "收藏剪贴板",
+      "description": "直接保存剪贴板文本，自动生成标题，可稍后补充备注",
+      "mode": "no-view"
+    },
+    {
+      "name": "open-web",
+      "title": "打开网页收藏夹",
+      "description": "启动本地网页管理台，完整管理和阅读同一份收藏",
+      "mode": "no-view",
+      "keywords": [
+        "web",
+        "网页",
+        "AI Favorites"
+      ]
     }
   ],
   "preferences": [
@@ -173,21 +190,48 @@
       "description": "相对于仓库的目录，默认 AI收藏。",
       "type": "textfield",
       "required": false
+    },
+    {
+      "name": "embeddingModel",
+      "title": "本地嵌入模型（可选）",
+      "description": "Ollama 中已安装的模型名称。仅在手动选择混合检索时使用；不自动下载模型。",
+      "type": "textfield",
+      "required": false
+    },
+    {
+      "name": "embeddingEndpoint",
+      "title": "本地嵌入服务地址（可选）",
+      "description": "默认 http://127.0.0.1:11434，仅支持本机 loopback 地址。",
+      "type": "textfield",
+      "required": false
     }
   ],
   "scripts": {
     "dev": "ray develop",
-    "build": "ray build -e dist -o dist",
+    "build": "npm run build:web && ray build -e dist -o dist && npm run build:cli",
     "lint": "ray lint",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
     "smoke": "tsx scripts/smoke-local.ts",
     "format": "prettier --write src tests scripts package.json tsconfig.json README.md",
-    "lint:local": "eslint src && prettier --check src"
+    "lint:local": "eslint src && prettier --check src",
+    "build:cli": "tsx scripts/build-cli.ts",
+    "cli": "tsx src/cli.ts",
+    "mcp": "tsx src/cli.ts mcp",
+    "smoke:search": "tsx scripts/smoke-search.ts",
+    "evaluate:search": "tsx scripts/evaluate-search.ts",
+    "predev": "npm run build:web",
+    "build:web": "tsx scripts/build-web.ts",
+    "web": "npm run build:web && tsx src/cli.ts web",
+    "pretest": "npm run build:web",
+    "test:web": "npm run build:web && tsx scripts/verify-web.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@raycast/api": "2.7.3",
     "diff": "9.0.0",
+    "dompurify": "3.4.17",
+    "marked": "18.1.1",
     "react": "19.0.0"
   },
   "devDependencies": {
@@ -197,6 +241,7 @@
     "@types/react-test-renderer": "19.0.0",
     "esbuild": "0.28.0",
     "eslint": "^9.0.0",
+    "playwright": "1.64.1",
     "prettier": "^3.0.0",
     "react-test-renderer": "19.0.0",
     "tsx": "^4.0.0",

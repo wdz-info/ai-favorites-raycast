@@ -25,7 +25,11 @@ export function favoriteMarkdown(favorite: AIFavorite): string {
   if (favorite.applicability) sections.push(`## 适用条件\n\n${favorite.applicability}`);
   if (favorite.context?.question) sections.push(`## 用户问题\n\n${favorite.context.question}`);
   if (favorite.context?.previousAssistant) sections.push(`## 上一条回复\n\n${favorite.context.previousAssistant}`);
-  sections.push(favorite.type === "file" ? fileMarkdown(favorite.content, favorite.filePath || "") : favorite.content);
+  sections.push(
+    favorite.type === "file" && !favorite.directorySnapshot
+      ? fileMarkdown(favorite.content, favorite.filePath || "")
+      : favorite.content,
+  );
   return sections.join("\n\n---\n\n");
 }
 

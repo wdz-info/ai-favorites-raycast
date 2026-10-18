@@ -72,6 +72,7 @@ export interface AIFavorite {
   sessionId?: string;
   messageId?: string;
   filePath?: string;
+  directorySnapshot?: DirectorySnapshot;
   projectPath?: string;
   title: string;
   content: string;
@@ -82,10 +83,18 @@ export interface AIFavorite {
   note?: string;
   applicability?: string;
   verification?: Verification;
+  reuseFeedback?: { helpful: number; unresolved: number; lastResult: "helpful" | "unresolved"; lastUsedAt: number };
   recommended?: boolean;
   versionGroupId?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+// Embedded resources keep directory versions portable through the existing JSON backup.
+export interface DirectorySnapshot {
+  version: 1;
+  entryPath?: string;
+  files: { path: string; base64: string; sha256: string }[];
 }
 
 export type FavoriteDraft = Omit<AIFavorite, "id" | "createdAt" | "updatedAt" | "tags" | "note">;

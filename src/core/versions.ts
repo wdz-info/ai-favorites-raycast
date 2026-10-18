@@ -15,7 +15,8 @@ export function naturalVersionKey(
     f.type,
     f.projectPath || "",
     f.type === "file" ? f.filePath : f.sessionId,
-    f.type === "message" ? f.messageId || f.source.label || f.id : "",
+    // A label such as "剪贴板" describes a capture method, not a stable reply identity.
+    f.type === "message" ? f.messageId || f.id : "",
   ]);
 }
 
@@ -26,6 +27,9 @@ export function snapshotDiff(before: AIFavorite, after: AIFavorite): string {
       f.context?.question ? `用户问题:\n${f.context.question}\n\n` : "",
       f.context?.previousAssistant ? `上一条回复:\n${f.context.previousAssistant}\n\n` : "",
       f.content,
+      ...(f.directorySnapshot
+        ? ["\n目录资源校验清单:\n", ...f.directorySnapshot.files.map((file) => `${file.path} ${file.sha256}\n`)]
+        : []),
     ].join("");
   const result = createTwoFilesPatch(
     `${before.title} (${before.snapshot.sha256.slice(0, 12)})`,
